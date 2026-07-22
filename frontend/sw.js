@@ -1,20 +1,55 @@
-const CACHE_NAME = 'yunseo-v1';
-const STATIC_ASSETS = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.json'];
+const CACHE_NAME = 'yunseo-v2';
+const STATIC_ASSETS = ['/', '/index.html', '/styles.css', '/manifest.json'];
 
-self.addEventListener('install', e => {
-    e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(STATIC_ASSETS)));
-    self.skipWaiting();
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)));
+  self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
-    e.waitUntil(caches.keys().then(names => Promise.all(names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)))));
-    self.clients.claim();
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(names =>
+      Promise.all(names.filter(name => name !== CACHE_NAME).map(name => caches.delete(name)))
+    )
+  );
+  self.clients.claim();
 });
 
-self.addEventListener('fetch', e => {
-    if (e.request.url.includes('/api/')) {
-        e.respondWith(fetch(e.request).catch(() => new Response(JSON.stringify({ error: 'offline' }), { headers: { 'Content-Type': 'application/json' } })));
-        return;
-    }
-    e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request).then(r => caches.open(CACHE_NAME).then(c => { c.put(e.request, r.clone()); return r; }))));
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  const url = new URL(request.url);
+
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request).catch(() =>
+        new Response(JSON.stringify({ error: 'offline' }), {
+          headers: { 'Content-Type': 'application/json' }
+        })
+      )
+    );
+    return;
+  }
+
+  if (url.pathname.endsWith('.js')) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then(cached =>
+      cached || fetch(request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        return response;
+      })
+    )
+  );
 });
