@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/frontend/$1" }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/frontend/$1" }
   ]
 }
