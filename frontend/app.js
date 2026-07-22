@@ -97,6 +97,7 @@ class YunseoApp {
     $('btn-chat-send') && ($('btn-chat-send').onclick = () => this.sendChat());
     $('chat-input') && ($('chat-input').onkeydown = e => { if (e.key === 'Enter') this.sendChat(); });
     this.renderActions();
+    this.renderBodyMenus();
   }
 
   switchTab(tab) {
@@ -125,6 +126,50 @@ class YunseoApp {
         try { const r = await this.api('/interact', { action: btn.dataset.action, intensity: 1 }); this.toast(r.emotion || '완료'); this.render(); }
         catch (e) { this.toast(e.message); }
       });
+    }
+  }
+
+  renderBodyMenus() {
+    const zones = $('erogenous-zones');
+    const positions = $('position-buttons');
+    if (zones) {
+      const items = [['lips','입술'],['neck','목'],['ears','귀'],['shoulders','어깨'],['hands','손'],['back','등'],['waist','허리']];
+      zones.innerHTML = items.map(([id,label]) => `<button class="zone-btn" data-zone="${id}">${label}</button>`).join('');
+      zones.querySelectorAll('button').forEach(btn => btn.onclick = () => this.toast(`${btn.textContent} 상호작용을 선택했습니다`));
+    }
+    if (positions) {
+      const items = [['embrace','포옹'],['hold_hands','손잡기'],['cuddle','기대기'],['dance','함께 춤추기'],['private_time','둘만의 시간']];
+      positions.innerHTML = items.map(([id,label]) => `<button class="action-btn" data-position="${id}">${label}</button>`).join('');
+      positions.querySelectorAll('button').forEach(btn => btn.onclick = () => this.toast(`${btn.textContent}을 선택했습니다`));
+    }
+  }
+
+  bodyMenusUnlocked(s) {
+    const rel = s.relationship || {};
+    const stage = rel.stage || 'stranger';
+    const index = Number(rel.stage_index || 0);
+    const metrics = rel.metrics || {};
+    const stageUnlocked = ['partner','engaged','spouse'].includes(stage) || index >= 4;
+    const metricsUnlocked = Number(metrics.trust || 0) >= 70 && Number(metrics.intimacy || 0) >= 70;
+    return Number(s.age || 0) >= 18 && (stageUnlocked || metricsUnlocked);
+  }
+
+  updateBodyMenuLocks(s) {
+    const unlocked = this.bodyMenusUnlocked(s);
+    const zones = $('erogenous-zones');
+    const positions = $('position-buttons');
+    const zonesLocked = $('zones-locked');
+    const positionsLocked = $('positions-locked');
+
+    if (zones) zones.style.display = unlocked ? 'grid' : 'none';
+    if (positions) positions.style.display = unlocked ? 'grid' : 'none';
+    if (zonesLocked) {
+      zonesLocked.style.display = unlocked ? 'none' : 'block';
+      zonesLocked.textContent = Number(s.age || 0) < 18 ? '🔒 성인 캐릭터만 이용할 수 있습니다' : '🔒 연인 단계 또는 신뢰·친밀감 70 이상에서 열립니다';
+    }
+    if (positionsLocked) {
+      positionsLocked.style.display = unlocked ? 'none' : 'block';
+      positionsLocked.textContent = Number(s.age || 0) < 18 ? '🔒 성인 캐릭터만 이용할 수 있습니다' : '🔒 연인 단계 또는 신뢰·친밀감 70 이상에서 열립니다';
     }
   }
 
@@ -160,6 +205,7 @@ class YunseoApp {
 
     const allowed = s.relationship?.allowed_actions || [];
     document.querySelectorAll('#action-buttons [data-action]').forEach(b => b.disabled = !allowed.includes(b.dataset.action));
+    this.updateBodyMenuLocks(s);
     this.renderMind();
   }
 
