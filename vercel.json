@@ -6,6 +6,8 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.js" },
+    { "src": "/app.js", "dest": "/frontend/bootstrap.js" },
+    { "src": "/app-original.js", "dest": "/frontend/app.js" },
     { "src": "/(.*)", "dest": "/frontend/$1" }
   ]
 }
